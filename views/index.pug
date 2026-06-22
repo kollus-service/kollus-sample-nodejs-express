@@ -1,0 +1,14 @@
+extends layout
+
+block content
+  .container(style="max-width: 600px; margin: 60px auto;")
+    h1= title
+    p Kollus 플랫폼 연동 샘플 코드입니다.
+
+    ul(style="line-height: 2.2;")
+      li
+        a(href="/sample") 샘플 플레이어
+        |  — JWT 발급 및 웹/모바일 플레이어 호출
+      li
+        a(href="/upload") 파일 업로드
+        |  — Kollus Upload API 연동

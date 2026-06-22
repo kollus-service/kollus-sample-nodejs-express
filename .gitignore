@@ -230,3 +230,9 @@ dist
 .svelte-kit
 
 # End of https://www.toptal.com/developers/gitignore/api/node,intellij+all
+/.idea/
+
+# 실제 설정 파일 — config.example.js만 커밋 대상
+config.js
+/CLAUDE.md
+/.claude/

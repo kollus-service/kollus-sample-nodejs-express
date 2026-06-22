@@ -1,0 +1,134 @@
+extends layout
+
+block content
+    .container(style="max-width: 800px; margin: 50px auto;")
+        h1 Kollus 파일 업로드
+
+        .form-group(style="margin-bottom: 20px;")
+            label(for="apiToken") API 토큰:
+            input#apiToken.form-control(type="text" value=defaultApiToken style="width: 100%; padding: 10px; margin-top: 5px;")
+
+        .form-group(style="margin-bottom: 20px;")
+            label(for="title") 제목:
+            input#title.form-control(type="text" placeholder="영상 제목" style="width: 100%; padding: 10px; margin-top: 5px;")
+
+        .form-group(style="margin-bottom: 20px;")
+            label(for="categoryKey") 카테고리 키:
+            input#categoryKey.form-control(type="text" value=defaultCategoryKey style="width: 100%; padding: 10px; margin-top: 5px;")
+
+        .form-group(style="margin-bottom: 20px;")
+            label(for="isEncryption") 암호화:
+            select#isEncryption(style="width: 100%; padding: 10px; margin-top: 5px;")
+                option(value="1") 암호화 콘텐츠
+                option(value="0") 비암호화(일반) 콘텐츠
+
+        .form-group(style="margin-bottom: 20px;")
+            label(for="isAudio") 콘텐츠 유형:
+            select#isAudio(style="width: 100%; padding: 10px; margin-top: 5px;")
+                option(value="0") 비디오
+                option(value="1") 오디오 전용
+
+        .form-group(style="margin-bottom: 20px;")
+            label(for="fileInput") 파일 선택:
+            input#fileInput.form-control(type="file" accept="video/*,audio/*" style="margin-top: 5px;")
+
+        button#uploadBtn(type="button" style="padding: 10px 30px; background: #007bff; color: white; border: none; cursor: pointer; border-radius: 5px;") 업로드 시작
+
+        //- 발급 정보 (업로드 URL 발급 직후 표시)
+        #uploadInfo(style="margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 5px; display: none;")
+            #uploadDetails
+
+        //- 진행률
+        #progressArea(style="margin-top: 20px; display: none;")
+            .progress(style="width: 100%; height: 30px; background: #e0e0e0; border-radius: 5px; overflow: hidden; position: relative;")
+                #progressBar(style="height: 100%; background: linear-gradient(90deg, #4caf50, #45a049); width: 0%; transition: width 0.3s;")
+                #progressText(style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #333; font-weight: bold; z-index: 1;") 0%
+
+        //- 업로드 완료
+        #completeInfo(style="margin-top: 10px; padding: 12px 16px; background: #e8f5e9; border-radius: 5px; display: none; color: #2e7d32; font-weight: bold;")
+            | ✓ 업로드 완료 — 인코딩이 시작되었습니다.
+
+    script.
+        document.getElementById('uploadBtn').addEventListener('click', async () => {
+            const uploadBtn = document.getElementById('uploadBtn');
+            const file = document.getElementById('fileInput').files[0];
+            const title = document.getElementById('title').value;
+
+            if (!title) {
+                alert('제목을 입력하세요');
+                return;
+            }
+            if (!file) {
+                alert('파일을 선택하세요');
+                return;
+            }
+
+            try {
+                uploadBtn.disabled = true;
+                uploadBtn.textContent = '처리 중...';
+
+                // 1. 업로드 URL 발급
+                const response = await fetch('/api/upload/create-url', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        access_token: document.getElementById('apiToken').value,
+                        expire_time: '3600', // 업로드 URL 유효 시간(초) — Kollus API 기본 권장값
+
+                        title: title,
+                        category_key: document.getElementById('categoryKey').value,
+                        is_encryption_upload: document.getElementById('isEncryption').value,
+                        is_audio_upload: document.getElementById('isAudio').value,
+                    })
+                });
+
+                const result = await response.json();
+                if (result.status !== 'ok') throw new Error(JSON.stringify(result.error || result));
+
+                // 발급 즉시 키 정보 표시
+                document.getElementById('uploadDetails').innerHTML = `
+          <p style="margin: 0 0 6px;"><strong>Upload File Key:</strong> ${result.data.upload_file_key}</p>
+          <p style="margin: 0;"><strong>인코딩 상태:</strong> <a href="${result.data.progress_url}" target="_blank">진행 상태 확인</a></p>
+        `;
+                document.getElementById('uploadInfo').style.display = 'block';
+
+                // 2. 파일 업로드
+                document.getElementById('progressArea').style.display = 'block';
+
+                const formData = new FormData();
+                formData.append('upload-file', file); // Kollus API 규격 필드명: 'upload-file' (file 아님)
+
+                // fetch API는 업로드 진행률을 추적할 수 없어 XHR을 사용
+                const xhr = new XMLHttpRequest();
+
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const pct = Math.round((e.loaded / e.total) * 100);
+                        document.getElementById('progressBar').style.width = pct + '%';
+                        document.getElementById('progressText').textContent = pct + '%';
+                    }
+                });
+
+                xhr.addEventListener('load', () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        uploadBtn.textContent = '업로드 완료';
+                        document.getElementById('completeInfo').style.display = 'block';
+                    } else {
+                        throw new Error('업로드 실패: ' + xhr.status);
+                    }
+                });
+
+                xhr.addEventListener('error', () => {
+                    throw new Error('네트워크 오류가 발생했습니다.');
+                });
+
+                xhr.open('POST', result.data.upload_url);
+                xhr.send(formData);
+
+            } catch (error) {
+                console.error('[Kollus] Upload Error:', error);
+                alert('업로드 실패: ' + error.message);
+                uploadBtn.textContent = '업로드 시작';
+                uploadBtn.disabled = false;
+            }
+        });

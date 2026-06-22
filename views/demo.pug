@@ -1,0 +1,14 @@
+//- 데모 페이지 — JWT와 custom_key가 하드코딩되어 있습니다. 실제 서비스에서는 서버 사이드 발급(/jwt/create)으로 교체하세요.
+extends layout
+
+block content
+  .container(style="max-width: 800px; margin: 50px auto;")
+    h1 Kollus Player Demo
+
+    .player-wrap(style="position: relative; width: 100%; padding-top: 56.25%;")
+      iframe(
+        src="https://v.kr.kollus.com/s?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJjdWlkIjoic2FtcGxlX3VzZXIiLCJleHB0Ijo2MDAwMDAxNzgxMjQwNzA4LCJtYyI6W3sibWNrZXkiOiJ5UERNeFFRViJ9XX0.eVBA8FHOK_g-BxXLNmC_4yKG0tOxGbif8xy4jLNWB2c&custom_key=3c01ec7d5dd6bbf8a865b6df686c6b60b5134a45afcb0561265ca08225d936fa"
+        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;"
+        allowfullscreen
+        allow="local-network-access; loopback-network; accelerometer; autoplay; encrypted-media; fullscreen; picture-in-picture; "
+      )
