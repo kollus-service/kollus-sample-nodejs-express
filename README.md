@@ -5,7 +5,7 @@ Kollus 미디어 플랫폼 연동 샘플 코드 — Node.js / Express
 ## 사전 요구사항
 
 - Node.js 20 이상
-- Kollus 서비스 계정 및 API Key ([Kollus 관리자 콘솔](https://admin.kollus.com))
+- Kollus 서비스 계정 및 API Key ([Kollus 관리자 콘솔](https://c-kr.kollus.com/service-account/custom-key)/로그인 필요)
 
 ## 환경 설정
 
