@@ -9,6 +9,12 @@ Kollus 미디어 플랫폼 연동 샘플 코드 — Node.js / Express
 
 ## 환경 설정
 
+`config.example.js`를 복사해서 시작합니다.
+
+```bash
+cp config.example.js config.js
+```
+
 `config.js`에서 아래 값을 실제 값으로 교체합니다.
 
 | 키 | 설명 | 위치 |
