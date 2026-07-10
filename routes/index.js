@@ -8,8 +8,14 @@ const config = require('../config');
 
 const SECRET_KEY = config.KOLLUS_SECRET_KEY;
 const CUSTOM_KEY = config.KOLLUS_CUSTOM_KEY;
+const MULTIDRM_SECRET_KEY = config.KOLLUS_MULTIDRM_SECRET_KEY;
+const MULTIDRM_CUSTOM_KEY = config.KOLLUS_MULTIDRM_CUSTOM_KEY;
 const API_TOKEN = config.KOLLUS_API_TOKEN;
 const CATEGORY_KEY = config.KOLLUS_CATEGORY_KEY;
+const PALLYCON_SITE_ID = config.PALLYCON_SITE_ID;
+const PALLYCON_ACCESS_KEY = config.PALLYCON_ACCESS_KEY;
+const PALLYCON_SITE_KEY = config.PALLYCON_SITE_KEY;
+const PALLYCON_IV = config.PALLYCON_IV;
 
 // 샘플 플레이어 페이지에 기본으로 노출할 MCK — 실제 서비스에서는 제거
 const DEFAULT_SAMPLE_MCK = 'yPDMxQQV';
@@ -40,6 +46,19 @@ router.get('/sample', function (req, res) {
         defaultSecretKey: SECRET_KEY,
         defaultCustomKey: CUSTOM_KEY,
         defaultMck: DEFAULT_SAMPLE_MCK
+    });
+});
+
+/** GET /sample-multidrm — Multi DRM(Widevine/PlayReady/FairPlay) JWT 발급 + 플레이어 샘플 UI */
+router.get('/sample-multidrm', function (req, res) {
+    res.render('sample-multidrm', {
+        title: 'Kollus Multi DRM Player Sample',
+        defaultSecretKey: MULTIDRM_SECRET_KEY,
+        defaultCustomKey: MULTIDRM_CUSTOM_KEY,
+        defaultSiteId: PALLYCON_SITE_ID,
+        defaultAccessKey: PALLYCON_ACCESS_KEY,
+        defaultSiteKey: PALLYCON_SITE_KEY,
+        defaultIv: PALLYCON_IV
     });
 });
 
