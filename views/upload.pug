@@ -1,3 +1,4 @@
+//- 파일 업로드 페이지 — Kollus Upload API 프록시(/api/upload/create-url)로 업로드 URL을 발급받은 뒤 XHR로 파일을 직접 전송하며 진행률을 표시합니다.
 extends layout
 
 block content
@@ -49,7 +50,19 @@ block content
             | ✓ 업로드 완료 — 인코딩이 시작되었습니다.
 
     script.
-        document.getElementById('uploadBtn').addEventListener('click', async () => {
+        // 업로드 URL 유효 시간(초) — Kollus API 기본 권장값
+        const DEFAULT_UPLOAD_EXPIRE_SECONDS = 3600;
+        // XHR 업로드를 성공으로 판정하는 HTTP 상태 코드 범위 (2xx)
+        const HTTP_STATUS_OK_MIN = 200;
+        const HTTP_STATUS_OK_MAX = 299;
+
+        document.getElementById('uploadBtn').addEventListener('click', handleUploadClick);
+
+        /**
+         * 업로드 시작 버튼 클릭 핸들러 — 업로드 URL을 발급받은 뒤 파일을 Kollus 업로드 서버로 전송합니다.
+         * @returns {Promise<void>}
+         */
+        async function handleUploadClick() {
             const uploadBtn = document.getElementById('uploadBtn');
             const file = document.getElementById('fileInput').files[0];
             const title = document.getElementById('title').value;
@@ -67,14 +80,13 @@ block content
                 uploadBtn.disabled = true;
                 uploadBtn.textContent = '처리 중...';
 
-                // 1. 업로드 URL 발급
+                // 1. 업로드 URL 발급 — 서버(routes/api.js)가 Kollus Upload API(create-url)를 중계
                 const response = await fetch('/api/upload/create-url', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         access_token: document.getElementById('apiToken').value,
-                        expire_time: '3600', // 업로드 URL 유효 시간(초) — Kollus API 기본 권장값
-
+                        expire_time: String(DEFAULT_UPLOAD_EXPIRE_SECONDS), // 기존 요청 형식(문자열) 유지
                         title: title,
                         category_key: document.getElementById('categoryKey').value,
                         is_encryption_upload: document.getElementById('isEncryption').value,
@@ -87,12 +99,12 @@ block content
 
                 // 발급 즉시 키 정보 표시
                 document.getElementById('uploadDetails').innerHTML = `
-          <p style="margin: 0 0 6px;"><strong>Upload File Key:</strong> ${result.data.upload_file_key}</p>
-          <p style="margin: 0;"><strong>인코딩 상태:</strong> <a href="${result.data.progress_url}" target="_blank">진행 상태 확인</a></p>
-        `;
+                    <p style="margin: 0 0 6px;"><strong>Upload File Key:</strong> ${result.data.upload_file_key}</p>
+                    <p style="margin: 0;"><strong>인코딩 상태:</strong> <a href="${result.data.progress_url}" target="_blank">진행 상태 확인</a></p>
+                `;
                 document.getElementById('uploadInfo').style.display = 'block';
 
-                // 2. 파일 업로드
+                // 2. 파일 업로드 — 발급된 upload_url(Kollus 업로드 서버)로 브라우저에서 직접 전송
                 document.getElementById('progressArea').style.display = 'block';
 
                 const formData = new FormData();
@@ -100,35 +112,65 @@ block content
 
                 // fetch API는 업로드 진행률을 추적할 수 없어 XHR을 사용
                 const xhr = new XMLHttpRequest();
-
-                xhr.upload.addEventListener('progress', (e) => {
-                    if (e.lengthComputable) {
-                        const pct = Math.round((e.loaded / e.total) * 100);
-                        document.getElementById('progressBar').style.width = pct + '%';
-                        document.getElementById('progressText').textContent = pct + '%';
-                    }
-                });
-
-                xhr.addEventListener('load', () => {
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        uploadBtn.textContent = '업로드 완료';
-                        document.getElementById('completeInfo').style.display = 'block';
-                    } else {
-                        throw new Error('업로드 실패: ' + xhr.status);
-                    }
-                });
-
-                xhr.addEventListener('error', () => {
-                    throw new Error('네트워크 오류가 발생했습니다.');
-                });
+                xhr.upload.addEventListener('progress', handleUploadProgress);
+                xhr.addEventListener('load', handleUploadLoad);
+                xhr.addEventListener('error', handleUploadError);
 
                 xhr.open('POST', result.data.upload_url);
                 xhr.send(formData);
 
             } catch (error) {
+                // 업로드 URL 발급 실패(네트워크 오류·Kollus API fail 응답·응답 파싱 실패): 사용자에게 알리고 버튼 복구
                 console.error('[Kollus] Upload Error:', error);
                 alert('업로드 실패: ' + error.message);
                 uploadBtn.textContent = '업로드 시작';
                 uploadBtn.disabled = false;
             }
-        });
+        }
+
+        /**
+         * XHR 업로드 progress 핸들러 — 진행률 바와 퍼센트 텍스트를 갱신합니다.
+         * @param {ProgressEvent} event
+         */
+        function handleUploadProgress(event) {
+            if (event.lengthComputable) {
+                const pct = Math.round((event.loaded / event.total) * 100);
+                document.getElementById('progressBar').style.width = pct + '%';
+                document.getElementById('progressText').textContent = pct + '%';
+            }
+        }
+
+        /**
+         * XHR 업로드 load 핸들러 — 2xx 응답이면 완료 표시, 아니면 실패 처리합니다.
+         * @param {ProgressEvent} event
+         */
+        function handleUploadLoad(event) {
+            const xhr = event.target;
+            if (xhr.status >= HTTP_STATUS_OK_MIN && xhr.status <= HTTP_STATUS_OK_MAX) {
+                document.getElementById('uploadBtn').textContent = '업로드 완료';
+                document.getElementById('completeInfo').style.display = 'block';
+            } else {
+                handleUploadFailure('HTTP ' + xhr.status);
+            }
+        }
+
+        /**
+         * XHR 업로드 error 핸들러 — 네트워크 단절 등 요청 자체가 실패한 경우
+         */
+        function handleUploadError() {
+            handleUploadFailure('네트워크 오류가 발생했습니다.');
+        }
+
+        /**
+         * 업로드 실패 공통 처리 — 에러 로그·알림을 표시하고 버튼을 초기 상태로 복구합니다.
+         * XHR 이벤트 리스너는 handleUploadClick의 try/catch가 끝난 뒤 비동기로 호출되므로
+         * 리스너 안에서 throw해도 catch에 잡히지 않습니다. 그래서 리스너가 이 함수를 직접 호출합니다.
+         * @param {string} message - 실패 원인 메시지
+         */
+        function handleUploadFailure(message) {
+            const uploadBtn = document.getElementById('uploadBtn');
+            console.error('[Kollus] Upload Error:', message);
+            alert('업로드 실패: ' + message);
+            uploadBtn.textContent = '업로드 시작';
+            uploadBtn.disabled = false;
+        }

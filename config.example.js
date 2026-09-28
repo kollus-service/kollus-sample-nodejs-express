@@ -5,8 +5,6 @@
  * 발급 위치: Kollus 관리자 콘솔 (https://admin.kollus.com)
  *
  * config.js는 .gitignore에 포함되어 있습니다. 절대 커밋하지 마세요.
- *
- * config.example.js를=> config.js 변경하세요.
  */
 module.exports = {
     // Kollus 플레이어 설정

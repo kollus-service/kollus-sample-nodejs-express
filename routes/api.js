@@ -5,6 +5,7 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
+const HTTP_STATUS = require('../utils/httpStatus');
 const config = require('../config');
 
 const KOLLUS_API_BASE_URL = 'https://c-api-kr.kollus.com/api';
@@ -26,7 +27,7 @@ router.post('/upload/create-url', async (req, res) => {
         const { access_token, expire_time, title, category_key, ...optionalParams } = req.body;
 
         if (!expire_time || !title) {
-            return res.status(400).json({
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
                 status: 'fail',
                 error: 'Missing required parameters',
                 required: ['expire_time', 'title']
@@ -46,7 +47,7 @@ router.post('/upload/create-url', async (req, res) => {
     } catch (error) {
         // Kollus API 에러: 상태코드와 메시지를 로깅하고 클라이언트에 오류 반환
         console.error('[Kollus] Upload API Error:', error.response?.data || error.message);
-        res.status(error.response?.status || 500).json({
+        res.status(error.response?.status || HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
             status: 'fail',
             error: error.response?.data || error.message
         });
@@ -74,7 +75,7 @@ router.get('/upload/progress/:upload_file_key', async (req, res) => {
     } catch (error) {
         // Kollus API 에러: 상태코드와 메시지를 로깅하고 클라이언트에 오류 반환
         console.error('[Kollus] Progress API Error:', error.response?.data || error.message);
-        res.status(error.response?.status || 500).json({
+        res.status(error.response?.status || HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
             status: 'fail',
             error: error.response?.data || error.message
         });

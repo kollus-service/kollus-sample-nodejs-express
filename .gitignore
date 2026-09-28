@@ -234,5 +234,11 @@ dist
 
 # 실제 설정 파일 — config.example.js만 커밋 대상
 config.js
+
+# 가이드 공통 항목 (.env, node_modules/는 위 Node 섹션에 이미 포함)
+config.yml
+target/
+.gradle/
+vendor/
 /CLAUDE.md
 /.claude/

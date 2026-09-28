@@ -14,15 +14,33 @@ const PALLYCON_CERTIFICATE_BASE_URL = 'https://license.pallycon.com/ri/fpsKeyMan
 // PallyCon 라이선스 정책 기본값 — 재생 가능 기간 10일 (초 단위)
 const DEFAULT_PALLYCON_DURATION_SECONDS = 864000;
 
+// Kollus JWT 기본 만료 시간 (분) — 단기 테스트용 기본값. 라우터·콜백·샘플 화면에서 공통 참조
+const DEFAULT_EXPIRY_MINUTES = 3;
+
 /**
  * Kollus 플레이어 JWT 토큰과 재생 URL을 생성합니다.
+ * cuid/expt/전역 옵션은 payload 최상위에, 콘텐츠 옵션은 mc[] 항목(인트로 → 본편 → 아웃트로 순)에 배치합니다.
  *
  * @param {Object} tokenParams - 토큰 생성 파라미터
- * @param {string} tokenParams.secretKey - HMAC 서명 키
+ * @param {string} tokenParams.secretKey - HMAC 서명 키 (Kollus 보안키)
  * @param {string} tokenParams.customKey - 플레이어 URL에 추가되는 커스텀 키
- * @param {string} tokenParams.mck - 미디어 콘텐츠 키
- * @param {string} [tokenParams.cuid] - 클라이언트 사용자 ID (워터마킹용)
- * @param {number} [tokenParams.expt=3] - 토큰 만료 시간 (분 단위)
+ * @param {string} tokenParams.mck - 본편 미디어 콘텐츠 키 (mc[].mckey)
+ * @param {string} [tokenParams.cuid] - 시청자 ID — 중복 재생 차단·이어보기·워터마킹(code_kind=client_user_id)의 기준값
+ * @param {number} [tokenParams.expt=DEFAULT_EXPIRY_MINUTES] - 토큰 만료 시간 (분 단위). 현재 시각 기준 Unix timestamp(초)로 변환되어 payload.expt에 들어감
+ * @param {string} [tokenParams.baseUrl=DEFAULT_PLAYER_BASE_URL] - 플레이어 베이스 URL
+ * @param {boolean} [tokenParams.next_episode=true] - 전역 옵션: 다음 회차 콜백(/callback/next-episode) 호출 여부
+ * @param {Array} [tokenParams.playback_rates] - 전역 옵션: 시청자가 선택 가능한 배속 리스트 (형식: [배속 배열, 표시 행 수])
+ * @param {boolean} [tokenParams.playcallback_ignore] - 전역 옵션: true면 플레이 콜백(/callback/play)을 서버로 전송하지 않음
+ * @param {Object} [tokenParams.video_watermarking_code_policy] - 전역 옵션: 화면 워터마크 정책 (code_kind, font_size, show_time 등)
+ * @param {Object} [tokenParams.subtitle_policy] - 전역 자막 정책 — 본편 mc 항목의 subtitle_policy로 적용 (mc_subtitle_policy가 있으면 무시됨)
+ * @param {string} [tokenParams.intro] - 본편 앞에 연속 재생할 인트로 콘텐츠 MCK (mc[] 첫 항목, intr: true)
+ * @param {string} [tokenParams.outro] - 본편 뒤에 연속 재생할 아웃트로 콘텐츠 MCK (mc[] 마지막 항목, intr: true)
+ * @param {string} [tokenParams.mcpf] - 본편 콘텐츠 옵션: 인코딩 프로파일 키. 미지정 시 재생 환경에 맞는 프로파일 자동 선택
+ * @param {string} [tokenParams.title] - 본편 콘텐츠 옵션: 플레이어에 표시할 콘텐츠 제목. 미지정 시 원본 파일 제목 노출
+ * @param {boolean} [tokenParams.seek] - 본편 콘텐츠 옵션: 재생 시점 이동(탐색) 허용 여부
+ * @param {number} [tokenParams.seekable_end] - 본편 콘텐츠 옵션: 탐색 허용 종료 시점(초). seek=false여도 0~이 시점까지는 탐색 허용
+ * @param {{ start_time?: number, end_time?: number }} [tokenParams.play_section] - 본편 콘텐츠 옵션: 시청자에게 노출할 재생 구간(초)
+ * @param {Object} [tokenParams.mc_subtitle_policy] - 본편 콘텐츠 옵션: 항목별 자막 정책. 전역 subtitle_policy보다 우선 적용
  * @returns {{ token: string, link: string, payload: Object }} JWT 토큰, 재생 URL, 페이로드
  */
 function generateKollusToken(tokenParams) {
@@ -31,7 +49,7 @@ function generateKollusToken(tokenParams) {
         customKey,
         cuid,
         mck,
-        expt = 3,
+        expt = DEFAULT_EXPIRY_MINUTES,
         seek,
         baseUrl = DEFAULT_PLAYER_BASE_URL,
         // 전역 옵션
@@ -249,6 +267,7 @@ function encryptPallyConPolicy(policyJson, siteKey, iv) {
  * @param {'Widevine'|'PlayReady'|'FairPlay'} params.drmType - 재생 브라우저에 맞는 DRM 타입
  * @param {number} [params.duration] - 재생 가능 기간 (초). 미지정 시 기본값 사용
  * @returns {string} Base64로 인코딩된 PallyCon 페이로드 (drm_policy.data.custom_header.value 값)
+ * @throws {RangeError|TypeError} siteKey가 32바이트(ERR_CRYPTO_INVALID_KEYLEN) 또는 iv가 16바이트(ERR_CRYPTO_INVALID_IV)가 아니면 AES-256-CBC 암호화 단계(crypto.createCipheriv)에서 오류 발생
  */
 function generatePallyConCustomHeaderValue(params) {
     const {
@@ -296,7 +315,7 @@ function generatePallyConCustomHeaderValue(params) {
  * @param {string} tokenParams.customKey - 플레이어 URL에 추가되는 커스텀 키
  * @param {string} tokenParams.mck - 미디어 콘텐츠 키
  * @param {string} [tokenParams.cuid] - 시청자 ID
- * @param {number} [tokenParams.expt=3] - 토큰 만료 시간 (분 단위)
+ * @param {number} [tokenParams.expt=DEFAULT_EXPIRY_MINUTES] - 토큰 만료 시간 (분 단위)
  * @param {'dash'|'hls'} [tokenParams.streamingType='dash'] - dash: Widevine/PlayReady, hls: FairPlay
  * @param {string} [tokenParams.siteId] - PallyCon Site ID. certificateUrl 미지정 시 이 값으로 자동 조합
  * @param {string} [tokenParams.licenseUrl] - 라이선스 서버 주소. 미지정 시 PallyCon 고정 주소 사용
@@ -311,7 +330,7 @@ function generateKollusMultiDrmToken(tokenParams) {
         customKey,
         cuid,
         mck,
-        expt = 3,
+        expt = DEFAULT_EXPIRY_MINUTES,
         baseUrl = DEFAULT_PLAYER_BASE_URL,
         streamingType = 'dash',
         siteId,
@@ -349,5 +368,5 @@ function generateKollusMultiDrmToken(tokenParams) {
     return { token, link, payload };
 }
 
-module.exports = { generateKollusToken, generateKollusMultiDrmToken, generatePallyConCustomHeaderValue, detectDrmProfile };
+module.exports = { generateKollusToken, generateKollusMultiDrmToken, generatePallyConCustomHeaderValue, detectDrmProfile, DEFAULT_EXPIRY_MINUTES };
 

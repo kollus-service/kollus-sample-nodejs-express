@@ -11,6 +11,7 @@ const indexRouter = require('./routes/index');
 const jwtRouter = require('./routes/jwt');
 const callbackRouter = require('./routes/callback');
 const apiRouter = require('./routes/api');
+const HTTP_STATUS = require('./utils/httpStatus');
 
 const app = express();
 
@@ -27,7 +28,7 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Private-Network', 'true');
     res.setHeader('Access-Control-Allow-Headers', 'Access-Control-Request-Private-Network');
     if (req.method === 'OPTIONS') {
-        return res.sendStatus(204);
+        return res.sendStatus(HTTP_STATUS.NO_CONTENT);
     }
     next();
 });
@@ -44,14 +45,14 @@ app.use('/api', apiRouter);
 
 // 404 처리
 app.use(function (req, res, next) {
-    next(createError(404));
+    next(createError(HTTP_STATUS.NOT_FOUND));
 });
 
 // 에러 핸들러
 app.use(function (err, req, res, next) {
     res.locals.message = err.message;
     res.locals.error = req.app.get('env') === 'development' ? err : {};
-    res.status(err.status || 500);
+    res.status(err.status || HTTP_STATUS.INTERNAL_SERVER_ERROR);
     res.render('error');
 });
 

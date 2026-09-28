@@ -7,7 +7,8 @@ const router = express.Router();
 const crypto = require('crypto');
 const fs = require('fs').promises;
 const path = require('path');
-const { generateKollusToken } = require('../utils/jwt');
+const { generateKollusToken, DEFAULT_EXPIRY_MINUTES } = require('../utils/jwt');
+const HTTP_STATUS = require('../utils/httpStatus');
 const config = require('../config');
 
 const SECRET_KEY = config.KOLLUS_SECRET_KEY;
@@ -57,6 +58,8 @@ function sendCallbackJWT(res, payload) {
  * @returns {string|null} 다음 회차 MCK, 없으면 null
  */
 function getNextMck(currentMck) {
+    // 샘플은 currentMck와 무관하게 설정 목록에서 무작위로 고른다. 실제 서비스에서는 currentMck 기준으로 DB 조회
+    if (SAMPLE_NEXT_EPISODE_MCKS.length === 0) return null;
     return SAMPLE_NEXT_EPISODE_MCKS[Math.floor(Math.random() * SAMPLE_NEXT_EPISODE_MCKS.length)];
 }
 
@@ -77,7 +80,7 @@ router.post('/play', function (req, res) {
             exp: now + CALLBACK_JWT_EXPIRE_SEC
         });
     } else {
-        res.status(400).send('Unknown kind');
+        res.status(HTTP_STATUS.BAD_REQUEST).send('Unknown kind');
     }
 });
 
@@ -90,7 +93,7 @@ router.post('/drm', function (req, res) {
         items = JSON.parse(req.body.items);
     } catch (e) {
         // items 파싱 실패: 잘못된 JSON 형식
-        return res.status(400).send('Invalid items');
+        return res.status(HTTP_STATUS.BAD_REQUEST).send('Invalid items');
     }
 
     const now = Math.floor(Date.now() / 1000);
@@ -145,7 +148,7 @@ router.post('/next-episode', function (req, res) {
             customKey: CUSTOM_KEY,
             cuid: id || 'unknown',
             mck: nextMck,
-            expt: 3
+            expt: DEFAULT_EXPIRY_MINUTES
         });
 
         // Kollus 다음회차 콜백은 SI링크(/si) 형태를 요구함 — /s가 아님
@@ -171,7 +174,7 @@ router.post('/lms', async function (req, res) {
         console.error('[Kollus] LMS log write error:', err);
     }
 
-    res.sendStatus(200);
+    res.sendStatus(HTTP_STATUS.OK);
 });
 
 module.exports = router;

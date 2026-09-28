@@ -1,10 +1,11 @@
 /**
  * Kollus 플레이어 JWT 발급 라우터
- * GET /jwt/create (쿼리 파라미터) 또는 POST /jwt/create (JSON 바디)로 토큰을 발급합니다.
+ * GET(쿼리 파라미터)/POST(JSON 바디) /jwt/create로 표준 토큰을, /jwt/create-multidrm으로 Multi DRM 토큰을 발급합니다.
  */
 const express = require('express');
 const router = express.Router();
-const { generateKollusToken, generateKollusMultiDrmToken, generatePallyConCustomHeaderValue, detectDrmProfile } = require('../utils/jwt');
+const { generateKollusToken, generateKollusMultiDrmToken, generatePallyConCustomHeaderValue, detectDrmProfile, DEFAULT_EXPIRY_MINUTES } = require('../utils/jwt');
+const HTTP_STATUS = require('../utils/httpStatus');
 const config = require('../config');
 
 const SECRET_KEY = config.KOLLUS_SECRET_KEY;
@@ -15,9 +16,6 @@ const PALLYCON_SITE_ID = config.PALLYCON_SITE_ID;
 const PALLYCON_ACCESS_KEY = config.PALLYCON_ACCESS_KEY;
 const PALLYCON_SITE_KEY = config.PALLYCON_SITE_KEY;
 const PALLYCON_IV = config.PALLYCON_IV;
-
-// Kollus JWT 기본 만료 시간 (분) — 단기 테스트용 기본값
-const DEFAULT_EXPIRY_MINUTES = 3;
 
 /**
  * JWT 생성 공통 로직 — GET/POST 요청 파라미터를 받아 토큰을 발급합니다.
@@ -50,7 +48,7 @@ function createJWT(params, res, next) {
 
         // 필수 파라미터 검증
         if (!mck) {
-            return res.status(400).json({
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
                 error: 'Missing required parameters: mck'
             });
         }
@@ -122,12 +120,12 @@ function createMultiDrmJWT(params, userAgent, res, next) {
 
         // 필수 파라미터 검증
         if (!mck) {
-            return res.status(400).json({
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
                 error: 'Missing required parameters: mck'
             });
         }
         if (!cid) {
-            return res.status(400).json({
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
                 error: 'Missing required parameters: cid (Kollus 업로드 파일 키, mck와는 다른 값)'
             });
         }
@@ -135,7 +133,7 @@ function createMultiDrmJWT(params, userAgent, res, next) {
         // Site ID는 고객사 서비스 계정 고정값이라 config.js 기본값 사용, 필요시 요청으로 오버라이드
         const resolvedSiteId = siteId || PALLYCON_SITE_ID;
         if (!resolvedSiteId) {
-            return res.status(400).json({
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
                 error: 'Missing required parameters: siteId (PallyCon Site ID)'
             });
         }

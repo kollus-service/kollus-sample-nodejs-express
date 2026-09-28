@@ -1,0 +1,193 @@
+//- Multi DRM 샘플 플레이어 페이지 — 브라우저에서 입력한 Kollus/PallyCon 키로 Multi DRM JWT(/jwt/create-multidrm)를 발급받아 웹 플레이어(iframe)로 Widevine/PlayReady/FairPlay 콘텐츠를 재생합니다.
+extends layout
+
+block content
+  .container(style="max-width: 640px; margin: 50px auto;")
+    h1 Kollus Multi DRM Player Sample
+    p(style="color: #666; margin-top: -12px;") Widevine / PlayReady / FairPlay Multi DRM(DoveRunner·PallyCon) 재생 샘플입니다. DRM 종류를 지정하지 않으면 서버가 브라우저 User-Agent에 맞는 DRM 종류와 스트리밍 방식을 자동 선택합니다.
+    p(style="padding: 10px 12px; background: #fff3cd; border: 1px solid #ffeeba; border-radius: 5px; color: #856404; font-size: 13px;") ⚠ 이 샘플은 편의상 Secret Key와 PallyCon 키를 브라우저에서 입력받습니다. 실제 서비스에서는 이 값들을 서버에서만 보관하고 JWT 발급도 서버에서만 수행해야 합니다.
+
+    //- Kollus 서비스 계정 (Multi DRM 전용 — 표준 JWT 계정과 별도)
+    .card(style="border: 1px solid #ddd; border-radius: 5px; padding: 20px; margin-bottom: 20px;")
+      h3(style="margin-top: 0;") Kollus 서비스 계정 (Multi DRM 전용)
+      .form-group(style="margin-bottom: 12px;")
+        label Secret Key:
+        input#secretKey(type="text" value=defaultSecretKey style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box;")
+      .form-group(style="margin-bottom: 12px;")
+        label Custom Key:
+        input#customKey(type="text" value=defaultCustomKey style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box;")
+
+    //- PallyCon(DoveRunner) 라이선스 설정
+    .card(style="border: 1px solid #ddd; border-radius: 5px; padding: 20px; margin-bottom: 20px;")
+      h3(style="margin-top: 0;") PallyCon(DoveRunner) 설정
+      .row(style="display: flex; gap: 12px; margin-bottom: 12px;")
+        .form-group(style="flex: 1;")
+          label Site ID:
+          input#siteId(type="text" value=defaultSiteId style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box;")
+        .form-group(style="flex: 1;")
+          label Access Key:
+          input#accessKey(type="text" value=defaultAccessKey style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box;")
+      .row(style="display: flex; gap: 12px;")
+        .form-group(style="flex: 1;")
+          label Site Key (AES-256 키, 32바이트):
+          input#siteKey(type="text" value=defaultSiteKey style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box;")
+        .form-group(style="flex: 1;")
+          label IV (16바이트):
+          input#iv(type="text" value=defaultIv style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box;")
+
+    //- 재생 정보 입력 폼
+    .card(style="border: 1px solid #ddd; border-radius: 5px; padding: 20px; margin-bottom: 20px;")
+      h3(style="margin-top: 0;") JWT 발급
+      .form-group(style="margin-bottom: 12px;")
+        label MCK (미디어 콘텐츠 키):
+        input#mck(type="text" placeholder="재생할 미디어 콘텐츠 키" style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box;")
+      .form-group(style="margin-bottom: 12px;")
+        label CID (Multi DRM 콘텐츠 ID — Kollus 업로드 파일 키, MCK와 다른 값):
+        input#cid(type="text" placeholder="Kollus 업로드 파일 키" style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box;")
+      .row(style="display: flex; gap: 12px; margin-bottom: 12px;")
+        .form-group(style="flex: 1;")
+          label CUID (시청자 ID):
+          input#cuid(type="text" placeholder="user001" style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box;")
+        .form-group(style="flex: 1;")
+          label 만료 (분):
+          input#expt(type="number" value=defaultExpiryMinutes min="1" style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box;")
+      .row(style="display: flex; gap: 12px;")
+        .form-group(style="flex: 1;")
+          label DRM 종류:
+          select#drmType(style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box;")
+            option(value="auto" selected) 자동 감지 (User-Agent 기반)
+            option(value="Widevine") Widevine (dash)
+            option(value="PlayReady") PlayReady (dash)
+            option(value="FairPlay") FairPlay (hls)
+        .form-group(style="flex: 1;")
+          label 라이선스 유효기간 (초, 선택):
+          input#duration(type="number" min="1" placeholder="미입력 시 서버 기본값(10일)" style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box;")
+      button#issueBtn(type="button" onclick="handleMultiDrmJwtIssue()" style="margin-top: 8px; padding: 10px 24px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;") JWT 발급 및 재생
+
+    //- 에러 메시지
+    #errorMsg(style="display:none; padding: 12px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 5px; margin-bottom: 20px; color: #721c24;")
+
+    //- 플레이어 섹션 (JWT 발급 후 활성화)
+    #playerSection(style="display: none;")
+
+      .section(style="border: 1px solid #ddd; border-radius: 5px; padding: 20px; margin-bottom: 20px;")
+        h3(style="margin-top: 0;") Multi DRM 웹 플레이어 (iframe)
+        .player-wrap(style="position: relative; width: 100%; padding-top: 56.25%;")
+          iframe#kollusIframe(
+            src="about:blank"
+            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;"
+            allowfullscreen
+            allow="local-network-access; loopback-network; accelerometer; autoplay; encrypted-media; fullscreen; picture-in-picture;"
+          )
+
+      .section(style="background: #f8f9fa; border-radius: 5px; padding: 15px; font-size: 12px; color: #666;")
+        p(style="margin: 0 0 4px;") DRM 종류 / 스트리밍 방식:
+        code#drmInfoDisplay(style="display: block; margin-bottom: 10px;")
+        p(style="margin: 0 0 4px;") JWT Token:
+        code#jwtTokenDisplay(style="word-break: break-all;")
+
+  script.
+    // 서버(routes/index.js)가 넘겨준 JWT 기본 만료 시간(분) — utils/jwt.js의 DEFAULT_EXPIRY_MINUTES와 동일값
+    const DEFAULT_EXPIRY_MINUTES = #{defaultExpiryMinutes};
+    // Multi DRM JWT 발급 엔드포인트 (routes/jwt.js)
+    const MULTIDRM_JWT_ENDPOINT = '/jwt/create-multidrm';
+    // DRM 종류 select에서 "자동 감지"를 뜻하는 값 — 이 값이면 drmType을 서버로 보내지 않아 User-Agent 기반 감지가 동작
+    const DRM_TYPE_AUTO = 'auto';
+
+    /**
+     * JWT 발급 버튼 핸들러 — 입력값 검증 후 Multi DRM JWT를 발급받아 플레이어 iframe에 로드합니다.
+     * @returns {Promise<void>}
+     */
+    async function handleMultiDrmJwtIssue() {
+      const mck = document.getElementById('mck').value.trim();
+      const cid = document.getElementById('cid').value.trim();
+      const cuid = document.getElementById('cuid').value.trim();
+      const expt = document.getElementById('expt').value.trim();
+      const secretKey = document.getElementById('secretKey').value.trim();
+      const customKey = document.getElementById('customKey').value.trim();
+      const siteId = document.getElementById('siteId').value.trim();
+      const accessKey = document.getElementById('accessKey').value.trim();
+      const siteKey = document.getElementById('siteKey').value.trim();
+      const iv = document.getElementById('iv').value.trim();
+      const drmType = document.getElementById('drmType').value;
+      const duration = document.getElementById('duration').value.trim();
+      const issueBtn = document.getElementById('issueBtn');
+
+      document.getElementById('errorMsg').style.display = 'none';
+      document.getElementById('playerSection').style.display = 'none';
+
+      if (!mck) {
+        showError('MCK(미디어 콘텐츠 키)를 입력하세요.');
+        return;
+      }
+      if (!cid) {
+        showError('CID(Multi DRM 콘텐츠 ID, Kollus 업로드 파일 키)를 입력하세요.');
+        return;
+      }
+
+      try {
+        issueBtn.textContent = '발급 중...';
+        issueBtn.disabled = true;
+
+        // Kollus Multi DRM JWT 발급 요청 — 서버(routes/jwt.js)가 PallyCon 라이선스 토큰을 만들어 mc[].drm_policy에 담고 HS256으로 서명
+        const res = await fetch(MULTIDRM_JWT_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mck: mck,
+            cid: cid,
+            cuid: cuid || 'sample_user',
+            expt: parseInt(expt) || DEFAULT_EXPIRY_MINUTES,
+            secretKey: secretKey,
+            customKey: customKey,
+            siteId: siteId,
+            accessKey: accessKey,
+            siteKey: siteKey,
+            iv: iv,
+            // 자동 감지가 아닐 때만 drmType 전달 (streamingType은 서버가 drmType에 맞춰 결정)
+            ...(drmType !== DRM_TYPE_AUTO && { drmType: drmType }),
+            ...(duration && { duration: duration })
+          })
+        });
+
+        // 라우터 검증 실패(400)는 JSON { error }로, 토큰 생성 예외(500)는 HTML 에러 페이지로 돌아오므로 Content-Type으로 구분
+        const contentType = res.headers.get('content-type') || '';
+        const data = contentType.includes('application/json') ? await res.json() : null;
+
+        if (!res.ok || !data) {
+          showError(data && data.error
+            ? data.error
+            : 'JWT 발급 실패 (HTTP ' + res.status + ') — PallyCon Site Key(32바이트)/IV(16바이트) 등 설정값을 확인하세요.');
+          return;
+        }
+        if (data.error) {
+          showError(data.error);
+          return;
+        }
+
+        const streamingType = data.payload.mc[0].drm_policy.streaming_type;
+        const drmLabel = drmType === DRM_TYPE_AUTO ? '자동 감지 (User-Agent)' : drmType;
+
+        document.getElementById('kollusIframe').src = data.link;
+        document.getElementById('drmInfoDisplay').textContent = drmLabel + ' / ' + streamingType;
+        document.getElementById('jwtTokenDisplay').textContent = data.token;
+        document.getElementById('playerSection').style.display = 'block';
+
+      } catch (err) {
+        // 발급 요청 실패(네트워크 오류·응답 JSON 파싱 실패 등): 화면에 에러 메시지 표시
+        showError('JWT 발급 실패: ' + err.message);
+      } finally {
+        issueBtn.textContent = 'JWT 발급 및 재생';
+        issueBtn.disabled = false;
+      }
+    }
+
+    /**
+     * 에러 메시지 영역에 문구를 표시합니다.
+     * @param {string} msg - 표시할 에러 메시지
+     */
+    function showError(msg) {
+      const el = document.getElementById('errorMsg');
+      el.textContent = msg;
+      el.style.display = 'block';
+    }

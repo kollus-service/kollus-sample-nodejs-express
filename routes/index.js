@@ -1,10 +1,11 @@
 /**
  * 메인 페이지 및 샘플 UI 라우터
- * 홈(/), 업로드(/upload), 샘플 플레이어(/sample) 페이지를 제공합니다.
+ * 홈(/), 업로드(/upload), 샘플 플레이어(/sample), Multi DRM 샘플 플레이어(/sample-multidrm), 데모(/demo) 페이지를 제공합니다.
  */
 const express = require('express');
 const router = express.Router();
 const config = require('../config');
+const { DEFAULT_EXPIRY_MINUTES } = require('../utils/jwt');
 
 const SECRET_KEY = config.KOLLUS_SECRET_KEY;
 const CUSTOM_KEY = config.KOLLUS_CUSTOM_KEY;
@@ -45,7 +46,8 @@ router.get('/sample', function (req, res) {
         title: 'Kollus Player Sample',
         defaultSecretKey: SECRET_KEY,
         defaultCustomKey: CUSTOM_KEY,
-        defaultMck: DEFAULT_SAMPLE_MCK
+        defaultMck: DEFAULT_SAMPLE_MCK,
+        defaultExpiryMinutes: DEFAULT_EXPIRY_MINUTES
     });
 });
 
@@ -58,7 +60,8 @@ router.get('/sample-multidrm', function (req, res) {
         defaultSiteId: PALLYCON_SITE_ID,
         defaultAccessKey: PALLYCON_ACCESS_KEY,
         defaultSiteKey: PALLYCON_SITE_KEY,
-        defaultIv: PALLYCON_IV
+        defaultIv: PALLYCON_IV,
+        defaultExpiryMinutes: DEFAULT_EXPIRY_MINUTES
     });
 });
 
