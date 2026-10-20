@@ -7,16 +7,15 @@ const router = express.Router();
 const config = require('../config');
 const { DEFAULT_EXPIRY_MINUTES } = require('../utils/jwt');
 
-const SECRET_KEY = config.KOLLUS_SECRET_KEY;
+const SECURITY_KEY = config.KOLLUS_SECURITY_KEY;
 const CUSTOM_KEY = config.KOLLUS_CUSTOM_KEY;
-const MULTIDRM_SECRET_KEY = config.KOLLUS_MULTIDRM_SECRET_KEY;
+const MULTIDRM_SECURITY_KEY = config.KOLLUS_MULTIDRM_SECURITY_KEY;
 const MULTIDRM_CUSTOM_KEY = config.KOLLUS_MULTIDRM_CUSTOM_KEY;
-const API_TOKEN = config.KOLLUS_API_TOKEN;
 const CATEGORY_KEY = config.KOLLUS_CATEGORY_KEY;
-const PALLYCON_SITE_ID = config.PALLYCON_SITE_ID;
-const PALLYCON_ACCESS_KEY = config.PALLYCON_ACCESS_KEY;
-const PALLYCON_SITE_KEY = config.PALLYCON_SITE_KEY;
-const PALLYCON_IV = config.PALLYCON_IV;
+const DOVERUNNER_SITE_ID = config.KOLLUS_DOVERUNNER_SITE_ID;
+const DOVERUNNER_ACCESS_KEY = config.KOLLUS_DOVERUNNER_ACCESS_KEY;
+const DOVERUNNER_SITE_KEY = config.KOLLUS_DOVERUNNER_SITE_KEY;
+const DOVERUNNER_IV = config.KOLLUS_DOVERUNNER_IV;
 
 // 샘플 플레이어 페이지에 기본으로 노출할 MCK — 실제 서비스에서는 제거
 const DEFAULT_SAMPLE_MCK = 'yPDMxQQV';
@@ -30,7 +29,6 @@ router.get('/', function (req, res) {
 router.get('/upload', function (req, res) {
     res.render('upload', {
         title: 'Kollus 파일 업로드',
-        defaultApiToken: API_TOKEN,
         defaultCategoryKey: CATEGORY_KEY
     });
 });
@@ -44,7 +42,7 @@ router.get('/demo', function (req, res) {
 router.get('/sample', function (req, res) {
     res.render('sample', {
         title: 'Kollus Player Sample',
-        defaultSecretKey: SECRET_KEY,
+        defaultSecurityKey: SECURITY_KEY,
         defaultCustomKey: CUSTOM_KEY,
         defaultMck: DEFAULT_SAMPLE_MCK,
         defaultExpiryMinutes: DEFAULT_EXPIRY_MINUTES
@@ -55,12 +53,12 @@ router.get('/sample', function (req, res) {
 router.get('/sample-multidrm', function (req, res) {
     res.render('sample-multidrm', {
         title: 'Kollus Multi DRM Player Sample',
-        defaultSecretKey: MULTIDRM_SECRET_KEY,
+        defaultSecurityKey: MULTIDRM_SECURITY_KEY,
         defaultCustomKey: MULTIDRM_CUSTOM_KEY,
-        defaultSiteId: PALLYCON_SITE_ID,
-        defaultAccessKey: PALLYCON_ACCESS_KEY,
-        defaultSiteKey: PALLYCON_SITE_KEY,
-        defaultIv: PALLYCON_IV,
+        defaultSiteId: DOVERUNNER_SITE_ID,
+        defaultAccessKey: DOVERUNNER_ACCESS_KEY,
+        defaultSiteKey: DOVERUNNER_SITE_KEY,
+        defaultIv: DOVERUNNER_IV,
         defaultExpiryMinutes: DEFAULT_EXPIRY_MINUTES
     });
 });

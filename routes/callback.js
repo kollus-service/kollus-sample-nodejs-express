@@ -11,7 +11,7 @@ const { generateKollusToken, DEFAULT_EXPIRY_MINUTES } = require('../utils/jwt');
 const HTTP_STATUS = require('../utils/httpStatus');
 const config = require('../config');
 
-const SECRET_KEY = config.KOLLUS_SECRET_KEY;
+const SECURITY_KEY = config.KOLLUS_SECURITY_KEY;
 const CUSTOM_KEY = config.KOLLUS_CUSTOM_KEY;
 const LOG_DIR = path.join(__dirname, '../logs');
 
@@ -20,8 +20,11 @@ const CALLBACK_JWT_EXPIRE_SEC = 600;
 // 콘텐츠 만료 기간 (30일, 초 단위)
 const CONTENT_EXPIRE_SEC = 60 * 60 * 24 * 30;
 
-// 다음 회차 샘플 MCK 목록 — 실제 서비스에서는 DB/API 조회로 교체
-const SAMPLE_NEXT_EPISODE_MCKS = config.NEXT_EPISODE_MCKS;
+// 다음 회차 샘플 MCK 목록 — config의 콤마 구분 문자열을 배열로 변환. 실제 서비스에서는 DB/API 조회로 교체
+const SAMPLE_NEXT_EPISODE_MCKS = String(config.NEXT_EPISODE_MCKS || '')
+    .split(',')
+    .map((mck) => mck.trim())
+    .filter(Boolean);
 
 /**
  * Kollus 콜백 응답용 JWT를 HS256으로 서명합니다.
@@ -34,7 +37,7 @@ function signCallbackJWT(payload) {
     const header = Buffer.from(JSON.stringify({ typ: 'JWT', alg: 'HS256' })).toString('base64url');
     const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
     const content = `${header}.${body}`;
-    const sig = crypto.createHmac('sha256', SECRET_KEY).update(content).digest('base64url');
+    const sig = crypto.createHmac('sha256', SECURITY_KEY).update(content).digest('base64url');
     return `${content}.${sig}`;
 }
 
@@ -144,7 +147,7 @@ router.post('/next-episode', function (req, res) {
 
     try {
         const { link } = generateKollusToken({
-            secretKey: SECRET_KEY,
+            securityKey: SECURITY_KEY,
             customKey: CUSTOM_KEY,
             cuid: id || 'unknown',
             mck: nextMck,

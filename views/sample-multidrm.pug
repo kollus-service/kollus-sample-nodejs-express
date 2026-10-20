@@ -1,25 +1,25 @@
-//- Multi DRM 샘플 플레이어 페이지 — 브라우저에서 입력한 Kollus/PallyCon 키로 Multi DRM JWT(/jwt/create-multidrm)를 발급받아 웹 플레이어(iframe)로 Widevine/PlayReady/FairPlay 콘텐츠를 재생합니다.
+//- Multi DRM 샘플 플레이어 페이지 — 브라우저에서 입력한 Kollus/DoveRunner 키로 Multi DRM JWT(/jwt/create-multidrm)를 발급받아 웹 플레이어(iframe)로 Widevine/PlayReady/FairPlay 콘텐츠를 재생합니다.
 extends layout
 
 block content
   .container(style="max-width: 640px; margin: 50px auto;")
     h1 Kollus Multi DRM Player Sample
-    p(style="color: #666; margin-top: -12px;") Widevine / PlayReady / FairPlay Multi DRM(DoveRunner·PallyCon) 재생 샘플입니다. DRM 종류를 지정하지 않으면 서버가 브라우저 User-Agent에 맞는 DRM 종류와 스트리밍 방식을 자동 선택합니다.
-    p(style="padding: 10px 12px; background: #fff3cd; border: 1px solid #ffeeba; border-radius: 5px; color: #856404; font-size: 13px;") ⚠ 이 샘플은 편의상 Secret Key와 PallyCon 키를 브라우저에서 입력받습니다. 실제 서비스에서는 이 값들을 서버에서만 보관하고 JWT 발급도 서버에서만 수행해야 합니다.
+    p(style="color: #666; margin-top: -12px;") Widevine / PlayReady / FairPlay Multi DRM(DoveRunner) 재생 샘플입니다. DRM 종류를 지정하지 않으면 서버가 브라우저 User-Agent에 맞는 DRM 종류와 스트리밍 방식을 자동 선택합니다.
+    p(style="padding: 10px 12px; background: #fff3cd; border: 1px solid #ffeeba; border-radius: 5px; color: #856404; font-size: 13px;") ⚠ 이 샘플은 편의상 Security Key와 DoveRunner 키를 브라우저에서 입력받습니다. 실제 서비스에서는 이 값들을 서버에서만 보관하고 JWT 발급도 서버에서만 수행해야 합니다.
 
     //- Kollus 서비스 계정 (Multi DRM 전용 — 표준 JWT 계정과 별도)
     .card(style="border: 1px solid #ddd; border-radius: 5px; padding: 20px; margin-bottom: 20px;")
       h3(style="margin-top: 0;") Kollus 서비스 계정 (Multi DRM 전용)
       .form-group(style="margin-bottom: 12px;")
-        label Secret Key:
-        input#secretKey(type="text" value=defaultSecretKey style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box;")
+        label Security Key:
+        input#securityKey(type="text" value=defaultSecurityKey style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box;")
       .form-group(style="margin-bottom: 12px;")
         label Custom Key:
         input#customKey(type="text" value=defaultCustomKey style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box;")
 
-    //- PallyCon(DoveRunner) 라이선스 설정
+    //- DoveRunner 라이선스 설정
     .card(style="border: 1px solid #ddd; border-radius: 5px; padding: 20px; margin-bottom: 20px;")
-      h3(style="margin-top: 0;") PallyCon(DoveRunner) 설정
+      h3(style="margin-top: 0;") DoveRunner 설정
       .row(style="display: flex; gap: 12px; margin-bottom: 12px;")
         .form-group(style="flex: 1;")
           label Site ID:
@@ -77,7 +77,9 @@ block content
             src="about:blank"
             style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;"
             allowfullscreen
-            allow="local-network-access; loopback-network; accelerometer; autoplay; encrypted-media; fullscreen; picture-in-picture;"
+            webkitallowfullscreen
+            mozallowfullscreen
+            allow="encrypted-media; local-network-access"
           )
 
       .section(style="background: #f8f9fa; border-radius: 5px; padding: 15px; font-size: 12px; color: #666;")
@@ -103,7 +105,7 @@ block content
       const cid = document.getElementById('cid').value.trim();
       const cuid = document.getElementById('cuid').value.trim();
       const expt = document.getElementById('expt').value.trim();
-      const secretKey = document.getElementById('secretKey').value.trim();
+      const securityKey = document.getElementById('securityKey').value.trim();
       const customKey = document.getElementById('customKey').value.trim();
       const siteId = document.getElementById('siteId').value.trim();
       const accessKey = document.getElementById('accessKey').value.trim();
@@ -129,7 +131,7 @@ block content
         issueBtn.textContent = '발급 중...';
         issueBtn.disabled = true;
 
-        // Kollus Multi DRM JWT 발급 요청 — 서버(routes/jwt.js)가 PallyCon 라이선스 토큰을 만들어 mc[].drm_policy에 담고 HS256으로 서명
+        // Kollus Multi DRM JWT 발급 요청 — 서버(routes/jwt.js)가 DoveRunner 라이선스 토큰을 만들어 mc[].drm_policy에 담고 HS256으로 서명
         const res = await fetch(MULTIDRM_JWT_ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -138,7 +140,7 @@ block content
             cid: cid,
             cuid: cuid || 'sample_user',
             expt: parseInt(expt) || DEFAULT_EXPIRY_MINUTES,
-            secretKey: secretKey,
+            securityKey: securityKey,
             customKey: customKey,
             siteId: siteId,
             accessKey: accessKey,
@@ -157,7 +159,7 @@ block content
         if (!res.ok || !data) {
           showError(data && data.error
             ? data.error
-            : 'JWT 발급 실패 (HTTP ' + res.status + ') — PallyCon Site Key(32바이트)/IV(16바이트) 등 설정값을 확인하세요.');
+            : 'JWT 발급 실패 (HTTP ' + res.status + ') — DoveRunner Site Key(32바이트)/IV(16바이트) 등 설정값을 확인하세요.');
           return;
         }
         if (data.error) {

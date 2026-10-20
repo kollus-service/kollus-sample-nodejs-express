@@ -9,8 +9,8 @@ block content
     .card(style="border: 1px solid #ddd; border-radius: 5px; padding: 20px; margin-bottom: 20px;")
       h3(style="margin-top: 0;") JWT 발급
       .form-group(style="margin-bottom: 12px;")
-        label Secret Key:
-        input#secretKey(type="text" value=defaultSecretKey style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box;")
+        label Security Key:
+        input#securityKey(type="text" value=defaultSecurityKey style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box;")
       .form-group(style="margin-bottom: 12px;")
         label Custom Key:
         input#customKey(type="text" value=defaultCustomKey style="width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box;")
@@ -39,7 +39,9 @@ block content
             src="about:blank"
             style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;"
             allowfullscreen
-            allow="local-network-access; loopback-network; accelerometer; autoplay; encrypted-media; fullscreen; picture-in-picture;"
+            webkitallowfullscreen
+            mozallowfullscreen
+            allow="encrypted-media; local-network-access"
           )
 
       .section(style="border: 1px solid #ddd; border-radius: 5px; padding: 20px; margin-bottom: 20px;")
@@ -88,7 +90,7 @@ block content
       const mck = document.getElementById('mck').value.trim();
       const cuid = document.getElementById('cuid').value.trim();
       const expt = document.getElementById('expt').value.trim();
-      const secretKey = document.getElementById('secretKey').value.trim();
+      const securityKey = document.getElementById('securityKey').value.trim();
       const customKey = document.getElementById('customKey').value.trim();
 
       document.getElementById('errorMsg').style.display = 'none';
@@ -111,7 +113,7 @@ block content
             mck: mck,
             cuid: cuid || 'sample_user',
             expt: parseInt(expt) || DEFAULT_EXPIRY_MINUTES,
-            secretKey: secretKey,
+            securityKey: securityKey,
             customKey: customKey
           })
         });

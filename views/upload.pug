@@ -6,10 +6,6 @@ block content
         h1 Kollus 파일 업로드
 
         .form-group(style="margin-bottom: 20px;")
-            label(for="apiToken") API 토큰:
-            input#apiToken.form-control(type="text" value=defaultApiToken style="width: 100%; padding: 10px; margin-top: 5px;")
-
-        .form-group(style="margin-bottom: 20px;")
             label(for="title") 제목:
             input#title.form-control(type="text" placeholder="영상 제목" style="width: 100%; padding: 10px; margin-top: 5px;")
 
@@ -50,8 +46,8 @@ block content
             | ✓ 업로드 완료 — 인코딩이 시작되었습니다.
 
     script.
-        // 업로드 URL 유효 시간(초) — Kollus API 기본 권장값
-        const DEFAULT_UPLOAD_EXPIRE_SECONDS = 3600;
+        // 업로드 URL 유효 시간(초) — Kollus 문서 기본값 (서버가 60~21600초로 보정)
+        const DEFAULT_UPLOAD_EXPIRE_SECONDS = 600;
         // XHR 업로드를 성공으로 판정하는 HTTP 상태 코드 범위 (2xx)
         const HTTP_STATUS_OK_MIN = 200;
         const HTTP_STATUS_OK_MAX = 299;
@@ -85,7 +81,6 @@ block content
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        access_token: document.getElementById('apiToken').value,
                         expire_time: String(DEFAULT_UPLOAD_EXPIRE_SECONDS), // 기존 요청 형식(문자열) 유지
                         title: title,
                         category_key: document.getElementById('categoryKey').value,

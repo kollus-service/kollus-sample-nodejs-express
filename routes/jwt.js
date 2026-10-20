@@ -4,18 +4,20 @@
  */
 const express = require('express');
 const router = express.Router();
-const { generateKollusToken, generateKollusMultiDrmToken, generatePallyConCustomHeaderValue, detectDrmProfile, DEFAULT_EXPIRY_MINUTES } = require('../utils/jwt');
+const { generateKollusToken, generateKollusMultiDrmToken, generateDoverunnerCustomHeaderValue, detectDrmProfile, DEFAULT_EXPIRY_MINUTES } = require('../utils/jwt');
 const HTTP_STATUS = require('../utils/httpStatus');
 const config = require('../config');
 
-const SECRET_KEY = config.KOLLUS_SECRET_KEY;
+const SECURITY_KEY = config.KOLLUS_SECURITY_KEY;
 const CUSTOM_KEY = config.KOLLUS_CUSTOM_KEY;
-const MULTIDRM_SECRET_KEY = config.KOLLUS_MULTIDRM_SECRET_KEY;
+const MULTIDRM_SECURITY_KEY = config.KOLLUS_MULTIDRM_SECURITY_KEY;
 const MULTIDRM_CUSTOM_KEY = config.KOLLUS_MULTIDRM_CUSTOM_KEY;
-const PALLYCON_SITE_ID = config.PALLYCON_SITE_ID;
-const PALLYCON_ACCESS_KEY = config.PALLYCON_ACCESS_KEY;
-const PALLYCON_SITE_KEY = config.PALLYCON_SITE_KEY;
-const PALLYCON_IV = config.PALLYCON_IV;
+const DOVERUNNER_SITE_ID = config.KOLLUS_DOVERUNNER_SITE_ID;
+const DOVERUNNER_ACCESS_KEY = config.KOLLUS_DOVERUNNER_ACCESS_KEY;
+const DOVERUNNER_SITE_KEY = config.KOLLUS_DOVERUNNER_SITE_KEY;
+const DOVERUNNER_IV = config.KOLLUS_DOVERUNNER_IV;
+const DOVERUNNER_LICENSE_URL = config.KOLLUS_DOVERUNNER_LICENSE_URL;
+const DOVERUNNER_CERTIFICATE_URL = config.KOLLUS_DOVERUNNER_CERTIFICATE_URL;
 
 /**
  * JWT 생성 공통 로직 — GET/POST 요청 파라미터를 받아 토큰을 발급합니다.
@@ -42,7 +44,7 @@ function createJWT(params, res, next) {
             seekable_end,
             next_episode,
             playcallback_ignore,
-            secretKey,
+            securityKey,
             customKey
         } = params;
 
@@ -54,7 +56,7 @@ function createJWT(params, res, next) {
         }
 
         const tokenParams = {
-            secretKey: secretKey || SECRET_KEY,
+            securityKey: securityKey || SECURITY_KEY,
             customKey: customKey || CUSTOM_KEY,
             cuid,
             mck,
@@ -114,7 +116,7 @@ function createMultiDrmJWT(params, userAgent, res, next) {
             accessKey,
             siteKey,
             iv,
-            secretKey,
+            securityKey,
             customKey
         } = params;
 
@@ -131,10 +133,17 @@ function createMultiDrmJWT(params, userAgent, res, next) {
         }
 
         // Site ID는 고객사 서비스 계정 고정값이라 config.js 기본값 사용, 필요시 요청으로 오버라이드
-        const resolvedSiteId = siteId || PALLYCON_SITE_ID;
+        const resolvedSiteId = siteId || DOVERUNNER_SITE_ID;
         if (!resolvedSiteId) {
             return res.status(HTTP_STATUS.BAD_REQUEST).json({
-                error: 'Missing required parameters: siteId (PallyCon Site ID)'
+                error: 'Missing required parameters: siteId (DoveRunner Site ID)'
+            });
+        }
+
+        // 라이선스/인증서 서버 주소는 config.js 값만 사용 (누락 시 서버 설정 오류)
+        if (!DOVERUNNER_LICENSE_URL || !DOVERUNNER_CERTIFICATE_URL) {
+            return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+                error: 'config.js에 KOLLUS_DOVERUNNER_LICENSE_URL / KOLLUS_DOVERUNNER_CERTIFICATE_URL을 설정하세요'
             });
         }
 
@@ -143,10 +152,10 @@ function createMultiDrmJWT(params, userAgent, res, next) {
             ? { drmType, streamingType: streamingType || (drmType === 'FairPlay' ? 'hls' : 'dash') }
             : detectDrmProfile(userAgent);
 
-        const customHeaderValue = generatePallyConCustomHeaderValue({
-            accessKey: accessKey || PALLYCON_ACCESS_KEY,
-            siteKey: siteKey || PALLYCON_SITE_KEY,
-            iv: iv || PALLYCON_IV,
+        const customHeaderValue = generateDoverunnerCustomHeaderValue({
+            accessKey: accessKey || DOVERUNNER_ACCESS_KEY,
+            siteKey: siteKey || DOVERUNNER_SITE_KEY,
+            iv: iv || DOVERUNNER_IV,
             siteId: resolvedSiteId,
             userId: cuid,
             cid,
@@ -156,13 +165,15 @@ function createMultiDrmJWT(params, userAgent, res, next) {
 
         const tokenParams = {
             // Multi DRM은 표준 JWT와 별도의 Kollus 서비스 계정(보안키/커스텀키)을 사용
-            secretKey: secretKey || MULTIDRM_SECRET_KEY,
+            securityKey: securityKey || MULTIDRM_SECURITY_KEY,
             customKey: customKey || MULTIDRM_CUSTOM_KEY,
             cuid,
             mck,
             expt: parseInt(expt) || DEFAULT_EXPIRY_MINUTES,
             streamingType: profile.streamingType,
-            siteId: resolvedSiteId,
+            licenseUrl: DOVERUNNER_LICENSE_URL,
+            // FairPlay 인증서 주소는 고정 주소에 siteId 쿼리 파라미터를 덧붙여 사용
+            certificateUrl: `${DOVERUNNER_CERTIFICATE_URL}?siteId=${encodeURIComponent(resolvedSiteId)}`,
             customHeaderValue
         };
 
