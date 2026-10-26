@@ -1,5 +1,7 @@
 # Kollus Node.js Express Sample — 플레이어 재생·콘텐츠 업로드·콜백·멀티 DRM 연동
 
+> ⚠ **보안 안내**: Node.js 보안 취약점으로 **22.23.4 / 24.22.1 / 26.12.1 이상**으로 업데이트하세요. (Node.js 20은 지원 종료되어 패치가 없습니다)
+
 ## 개요
 
 Kollus 미디어 플랫폼을 Node.js / Express로 연동하는 샘플입니다. 다음 기능을 한 앱에서 확인할 수 있습니다.
@@ -13,7 +15,7 @@ Kollus 미디어 플랫폼을 Node.js / Express로 연동하는 샘플입니다.
 
 ## 사전 요구사항
 
-- Node.js 20 이상
+- Node.js 22.23.4 이상 (24는 24.22.1, 26은 26.12.1 이상 — 2026년 10월 보안 패치 적용 버전, Node.js 20은 지원 종료)
 - Kollus 서비스 계정 및 키 ([Kollus 관리자 콘솔](https://admin.kollus.com) 로그인 필요)
 - (Multi DRM 사용 시) DoveRunner 계정의 Site ID / Access Key / Site Key / IV
 
